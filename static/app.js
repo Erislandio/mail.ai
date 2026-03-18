@@ -1,316 +1,167 @@
-'use strict';
+let arquivoSelecionado = null;
 
-const state = {
-  activeTab: 'text',
-  selectedFile: null,
-  lastResult: null,
-};
-
-const SAMPLES = {
-  productive: `De: joao.silva@empresa.com
-Para: suporte@financeiro.com
-Assunto: Problema urgente – Acesso bloqueado ao sistema de pagamentos
-
-Prezada equipe de suporte,
-
-Meu nome é João Silva e sou Analista Financeiro do setor de Contas a Pagar.
-Estou enfrentando um problema crítico desde esta manhã: meu acesso ao sistema 
-de pagamentos foi bloqueado sem aviso prévio, impedindo o processamento de 
-transferências urgentes com prazo hoje às 17h.
-
-Número do meu usuário: USR-20481
-Mensagem de erro: "401 – Acesso não autorizado"
-
-Solicitações pendentes afetadas: NF-7821, NF-7834, NF-7850 (total: R$ 285.000,00)
-
-Preciso urgentemente da restauração do acesso ou de um canal alternativo 
-para processar esses pagamentos antes do prazo.
-
-Atenciosamente,
-João Silva
-(11) 9 9123-4567`,
-
-  unproductive: `De: maria.oliveira@empresa.com
-Para: equipe@financeiro.com
-Assunto: Feliz Natal e Próspero Ano Novo! 🎄🎆
-
-Olá, querida equipe!
-
-Queria aproveitar esse momento especial para desejar a todos um 
-Feliz Natal repleto de paz, alegria e amor!
-
-Que o próximo ano seja cheio de realizações, saúde e muitos 
-momentos felizes para vocês e suas famílias.
-
-Foi um prazer imenso trabalhar ao lado de todos vocês este ano. 
-Juntos, alcançamos resultados incríveis!
-
-Com muito carinho e gratidão,
-Maria Oliveira 🎁✨`,
-};
-
-const $ = (id) => document.getElementById(id);
-const setHidden = (el, val) => val ? el.setAttribute('hidden', '') : el.removeAttribute('hidden');
-
-async function checkHealth() {
-  const dot = $('statusDot');
-  const label = $('statusLabel');
-  try {
-    const res = await fetch('/api/health');
-    const data = await res.json();
-    dot.className = 'badge-dot online';
-    label.textContent = data.ai_enabled ? 'IA Online (Gemini)' : 'Online (Regras)';
-  } catch {
-    dot.className = 'badge-dot offline';
-    label.textContent = 'Offline';
-  }
+function selecionarArquivo(event) {
+  const arquivo = event.target.files[0];
+  if (!arquivo) return;
+  arquivoSelecionado = arquivo;
+  document.getElementById("labelArquivo").textContent = arquivo.name;
+  document.querySelector(".upload-label").classList.add("selecionado");
+  document.getElementById("emailTexto").value = "";
 }
 
-function switchTab(tab) {
-  state.activeTab = tab;
-  ['text', 'file'].forEach((t) => {
-    const btn = $(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
-    const panel = $(`panel${t.charAt(0).toUpperCase() + t.slice(1)}`);
-    const active = t === tab;
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-selected', String(active));
-    panel.classList.toggle('active', active);
-    setHidden(panel, !active);
-  });
-}
+async function analisar() {
+  const texto = document.getElementById("emailTexto").value.trim();
+  const btn = document.getElementById("btnAnalisar");
 
-function updateCharCount() {
-  const len = $('emailText').value.length;
-  $('charCount').textContent = `${len.toLocaleString('pt-BR')} caractere${len !== 1 ? 's' : ''}`;
-}
-
-function loadSample(type) {
-  switchTab('text');
-  const ta = $('emailText');
-  ta.value = SAMPLES[type] || '';
-  ta.dispatchEvent(new Event('input'));
-  ta.focus();
-  showToast('💡 Exemplo carregado – clique em Analisar Email!', 'success');
-}
-
-function triggerFileInput() { $('fileInput').click(); }
-
-function handleFileSelect(event) {
-  const file = event.target.files[0];
-  if (file) setFile(file);
-}
-
-function handleDragOver(event) {
-  event.preventDefault();
-  $('dropZone').classList.add('drag-over');
-}
-
-function handleDragLeave() {
-  $('dropZone').classList.remove('drag-over');
-}
-
-function handleDrop(event) {
-  event.preventDefault();
-  $('dropZone').classList.remove('drag-over');
-  const file = event.dataTransfer.files[0];
-  if (file) {
-    const name = file.name.toLowerCase();
-    if (!name.endsWith('.txt') && !name.endsWith('.pdf')) {
-      showToast('❌ Apenas arquivos .txt ou .pdf são aceitos.', 'error');
-      return;
-    }
-    setFile(file);
-  }
-}
-
-function setFile(file) {
-  state.selectedFile = file;
-  $('fileName').textContent = file.name;
-  setHidden($('filePreview'), false);
-  showToast(`📄 Arquivo "${file.name}" selecionado.`, 'success');
-}
-
-function removeFile(event) {
-  event.stopPropagation();
-  state.selectedFile = null;
-  $('fileInput').value = '';
-  setHidden($('filePreview'), true);
-  showToast('🗑️ Arquivo removido.', '');
-}
-
-async function analyzeEmail() {
-  const btn = $('analyzeBtn');
-  const btnTxt = btn.querySelector('.btn-text');
-  const btnLdr = btn.querySelector('.btn-loading');
-
-  const isFile = state.activeTab === 'file';
-  const text = $('emailText').value.trim();
-
-  if (isFile && !state.selectedFile) {
-    showToast('⚠️ Por favor, selecione um arquivo .txt ou .pdf.', 'error');
-    return;
-  }
-  if (!isFile && text.length < 10) {
-    showToast('⚠️ O email é muito curto. Insira pelo menos 10 caracteres.', 'error');
-    $('emailText').focus();
+  if (!arquivoSelecionado && texto.length < 10) {
+    mostrarToast("⚠️ Insira o texto do email ou selecione um arquivo.");
     return;
   }
 
   btn.disabled = true;
-  setHidden(btnTxt, true);
-  setHidden(btnLdr, false);
-  setHidden($('resultsPlaceholder'), false);
-  setHidden($('resultsContent'), true);
+  btn.textContent = "Analisando…";
 
   try {
-    let res;
-    if (isFile) {
-      const formData = new FormData();
-      formData.append('file', state.selectedFile);
-      res = await fetch('/api/classify', { method: 'POST', body: formData });
+    let resposta;
+
+    if (arquivoSelecionado) {
+      const form = new FormData();
+      form.append("arquivo", arquivoSelecionado);
+      resposta = await fetch("/classificar", { method: "POST", body: form });
     } else {
-      res = await fetch('/api/classify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+      resposta = await fetch("/classificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto }),
       });
     }
 
-    const data = await res.json();
+    const dados = await resposta.json();
 
-    if (!res.ok) {
-      throw new Error(data.error || `Erro ${res.status}`);
+    if (!resposta.ok) {
+      mostrarToast("❌ " + (dados.erro || "Erro ao analisar."));
+      return;
     }
 
-    state.lastResult = data;
-    renderResults(data);
+    salvarHistorico(dados, texto);
+    mostrarResultado(dados);
 
-  } catch (err) {
-    showToast(`❌ ${err.message}`, 'error');
-    console.error('Erro na análise:', err);
+  } catch (e) {
+    mostrarToast("❌ Erro de conexão com o servidor.");
   } finally {
     btn.disabled = false;
-    setHidden(btnTxt, false);
-    setHidden(btnLdr, true);
+    btn.textContent = "Analisar Email";
   }
 }
 
-function renderResults(data) {
-  const { category, confidence, reason, key_topics, priority, suggested_response, ai_powered, preprocessing } = data;
+function mostrarResultado(dados) {
+  const isProd = dados.categoria === "Produtivo";
 
-  const isProd = category === 'Produtivo';
+  const badge = document.getElementById("badgeCategoria");
+  badge.textContent = isProd ? "✅ Produtivo" : "💬 Improdutivo";
+  badge.className = "badge " + (isProd ? "produtivo" : "improdutivo");
 
-  const badge = $('categoryBadge');
-  badge.className = `category-badge ${isProd ? 'productive' : 'unproductive'}`;
-  $('categoryIcon').textContent = isProd ? '✅' : '💬';
-  $('categoryValue').textContent = category;
+  document.getElementById("motivo").textContent = dados.motivo;
+  document.getElementById("resposta").textContent = dados.resposta;
+  document.getElementById("motor").textContent = "⚙ Motor: " + dados.motor;
 
-  const priorityColors = { Alta: '#ef4444', Média: '#f59e0b', Baixa: '#10b981' };
-  $('priorityValue').textContent = priority || 'Média';
-  $('priorityValue').style.color = priorityColors[priority] || '#f59e0b';
+  document.getElementById("inputCard").hidden = true;
+  document.getElementById("historicoSection").hidden = true;
+  document.getElementById("resultadoCard").hidden = false;
+}
 
-  $('aiValue').textContent = ai_powered ? '🤖 Gemini' : '⚙️ Regras';
+async function copiar() {
+  const texto = document.getElementById("resposta").textContent;
+  await navigator.clipboard.writeText(texto);
+  mostrarToast("📋 Resposta copiada!");
+}
 
-  const pct = Math.round((confidence || 0) * 100);
-  $('confidencePct').textContent = `${pct}%`;
-  $('confidenceBar').setAttribute('aria-valuenow', pct);
-  requestAnimationFrame(() => {
-    $('confidenceFill').style.width = `${pct}%`;
+function novo() {
+  document.getElementById("emailTexto").value = "";
+  document.getElementById("arquivoInput").value = "";
+  document.getElementById("labelArquivo").textContent = "Selecionar arquivo";
+  document.querySelector(".upload-label").classList.remove("selecionado");
+  arquivoSelecionado = null;
+  document.getElementById("inputCard").hidden = false;
+  document.getElementById("resultadoCard").hidden = true;
+  renderizarHistorico();
+}
+
+// ── Feature 1: Status da IA ──────────────────────────────────────────────────
+
+async function verificarStatus() {
+  const el = document.getElementById("statusIA");
+  try {
+    const res = await fetch("/status");
+    const dados = await res.json();
+    if (dados.gemini) {
+      el.textContent = "🟢 Gemini AI ativo";
+      el.className = "status-ia online";
+    } else {
+      el.textContent = "🟡 Modo regras";
+      el.className = "status-ia regras";
+    }
+  } catch {
+    el.textContent = "🔴 Offline";
+    el.className = "status-ia offline";
+  }
+}
+
+// ── Feature 2: Histórico (localStorage) ─────────────────────────────────────
+
+function salvarHistorico(dados, texto) {
+  const historico = JSON.parse(localStorage.getItem("mailai_historico") || "[]");
+  const trecho = texto.slice(0, 60).replace(/\n/g, " ") || arquivoSelecionado?.name || "Arquivo";
+
+  historico.unshift({
+    categoria: dados.categoria,
+    trecho: trecho,
+    hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
   });
 
-  $('reasonText').textContent = reason || '—';
-
-  const topicsList = $('topicsList');
-  topicsList.innerHTML = '';
-  const topics = key_topics && key_topics.length > 0 ? key_topics : (preprocessing?.top_terms || []);
-  if (topics.length > 0) {
-    topics.slice(0, 10).forEach((t) => {
-      const span = document.createElement('span');
-      span.className = 'topic-tag';
-      span.textContent = t;
-      topicsList.appendChild(span);
-    });
-    setHidden($('topicsSection'), false);
-  } else {
-    setHidden($('topicsSection'), true);
-  }
-
-  if (preprocessing) {
-    $('nlpChars').textContent = (preprocessing.original_length || 0).toLocaleString('pt-BR');
-    $('nlpTokens').textContent = (preprocessing.token_count || 0).toLocaleString('pt-BR');
-    $('nlpFiltered').textContent = (preprocessing.filtered_token_count || 0).toLocaleString('pt-BR');
-  }
-
-  $('responseBox').textContent = suggested_response || '—';
-
-  setHidden($('resultsPlaceholder'), true);
-  const content = $('resultsContent');
-  setHidden(content, false);
-  content.classList.remove('results-content-enter');
-  void content.offsetWidth;
-  content.classList.add('results-content-enter');
-
-  if (window.innerWidth < 900) {
-    $('resultsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  showToast(`✨ Email classificado como ${category}!`, 'success');
+  if (historico.length > 5) historico.pop();
+  localStorage.setItem("mailai_historico", JSON.stringify(historico));
 }
 
-async function copyResponse() {
-  const text = $('responseBox').textContent;
-  const btn = $('copyBtn');
-  try {
-    await navigator.clipboard.writeText(text);
-    btn.classList.add('copied');
-    btn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-        <path d="M2 7l4 4 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Copiado!`;
-    showToast('📋 Resposta copiada!', 'success');
-    setTimeout(() => {
-      btn.classList.remove('copied');
-      btn.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-          <path d="M4 4V3a1 1 0 011-1h5a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.4"/>
-        </svg>
-        Copiar`;
-    }, 2500);
-  } catch {
-    showToast('❌ Falha ao copiar. Selecione o texto manualmente.', 'error');
+function renderizarHistorico() {
+  const historico = JSON.parse(localStorage.getItem("mailai_historico") || "[]");
+  const section = document.getElementById("historicoSection");
+  const lista = document.getElementById("historicoLista");
+
+  if (historico.length === 0) {
+    section.hidden = true;
+    return;
   }
+
+  lista.innerHTML = "";
+  historico.forEach((item) => {
+    const li = document.createElement("li");
+    const isProd = item.categoria === "Produtivo";
+    li.innerHTML = `
+      <span class="hist-badge ${isProd ? "produtivo" : "improdutivo"}">
+        ${isProd ? "Produtivo" : "Improdutivo"}
+      </span>
+      <span class="hist-trecho">${item.trecho}…</span>
+      <span class="hist-hora">${item.hora}</span>
+    `;
+    lista.appendChild(li);
+  });
+
+  section.hidden = false;
 }
 
-function resetAnalysis() {
-  $('emailText').value = '';
-  updateCharCount();
-  removeFile({ stopPropagation: () => {} });
-  switchTab('text');
-  setHidden($('resultsPlaceholder'), false);
-  setHidden($('resultsContent'), true);
-  $('confidenceFill').style.width = '0%';
-  state.lastResult = null;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+document.addEventListener("DOMContentLoaded", () => {
+  verificarStatus();
+  renderizarHistorico();
+});
 
 let toastTimer;
-function showToast(message, type = '') {
-  const toast = $('toast');
+function mostrarToast(msg) {
+  const toast = document.getElementById("toast");
   clearTimeout(toastTimer);
-  toast.textContent = message;
-  toast.className = `toast ${type} show`;
-  toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 3500);
+  toast.textContent = msg;
+  toast.classList.add("show");
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 3000);
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  checkHealth();
-  updateCharCount();
-
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      analyzeEmail();
-    }
-  });
-});
