@@ -45,7 +45,6 @@ async function analisar() {
 
     salvarHistorico(dados, texto);
     mostrarResultado(dados);
-
   } catch (e) {
     mostrarToast("❌ Erro de conexão com o servidor.");
   } finally {
@@ -87,8 +86,6 @@ function novo() {
   renderizarHistorico();
 }
 
-// ── Feature 1: Status da IA ──────────────────────────────────────────────────
-
 async function verificarStatus() {
   const el = document.getElementById("statusIA");
   try {
@@ -107,16 +104,22 @@ async function verificarStatus() {
   }
 }
 
-// ── Feature 2: Histórico (localStorage) ─────────────────────────────────────
-
 function salvarHistorico(dados, texto) {
-  const historico = JSON.parse(localStorage.getItem("mailai_historico") || "[]");
-  const trecho = texto.slice(0, 60).replace(/\n/g, " ") || arquivoSelecionado?.name || "Arquivo";
+  const historico = JSON.parse(
+    localStorage.getItem("mailai_historico") || "[]",
+  );
+  const trecho =
+    texto.slice(0, 60).replace(/\n/g, " ") ||
+    arquivoSelecionado?.name ||
+    "Arquivo";
 
   historico.unshift({
     categoria: dados.categoria,
     trecho: trecho,
-    hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    hora: new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
   });
 
   if (historico.length > 5) historico.pop();
@@ -124,7 +127,9 @@ function salvarHistorico(dados, texto) {
 }
 
 function renderizarHistorico() {
-  const historico = JSON.parse(localStorage.getItem("mailai_historico") || "[]");
+  const historico = JSON.parse(
+    localStorage.getItem("mailai_historico") || "[]",
+  );
   const section = document.getElementById("historicoSection");
   const lista = document.getElementById("historicoLista");
 
@@ -146,11 +151,7 @@ function renderizarHistorico() {
     `;
     lista.appendChild(li);
   });
-
-  section.hidden = false;
 }
-
-// ── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
   verificarStatus();

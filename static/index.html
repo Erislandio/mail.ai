@@ -1,116 +1,165 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MailAI – Classificador de Emails</title>
-  <meta name="description" content="Classifique emails corporativos como Produtivo ou Improdutivo com IA."/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MailAI – Classificador de Emails</title>
+    <meta
+      name="description"
+      content="Classifique emails corporativos como Produtivo ou Improdutivo com IA."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect width="24" height="24" rx="6" fill="#6366f1" />
+          <path
+            d="M5 9l7 4 7-4"
+            stroke="#fff"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+          <rect
+            x="5"
+            y="7"
+            width="14"
+            height="10"
+            rx="2"
+            stroke="#fff"
+            stroke-width="1.6"
+          />
+        </svg>
+        <span>MailAI</span>
+      </div>
+      <div id="statusIA" class="status-ia">Verificando...</div>
+    </header>
 
-<header>
-  <div class="logo">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <rect width="24" height="24" rx="6" fill="#6366f1"/>
-      <path d="M5 9l7 4 7-4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
-      <rect x="5" y="7" width="14" height="10" rx="2" stroke="#fff" stroke-width="1.6"/>
-    </svg>
-    <span>MailAI</span>
-  </div>
-  <div id="statusIA" class="status-ia">Verificando...</div>
-</header>
+    <main>
+      <div class="card" id="inputCard">
+        <h1>Classificador de Emails</h1>
+        <p class="subtitle">
+          Cole o texto do email ou envie um arquivo <strong>.txt</strong> ou
+          <strong>.pdf</strong>
+        </p>
 
-<main>
-  <div class="card" id="inputCard">
-    <h1>Classificador de Emails</h1>
-    <p class="subtitle">Cole o texto do email ou envie um arquivo <strong>.txt</strong> ou <strong>.pdf</strong></p>
+        <textarea
+          id="emailTexto"
+          placeholder="Cole o conteúdo do email aqui…"
+          rows="10"
+        ></textarea>
 
-    <textarea id="emailTexto" placeholder="Cole o conteúdo do email aqui…" rows="10"></textarea>
+        <div class="separador">
+          <span>ou</span>
+        </div>
 
-    <div class="separador">
-      <span>ou</span>
-    </div>
+        <label class="upload-label" for="arquivoInput">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path
+              d="M9 12V4M5 8l4-4 4 4"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M3 14h12"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span id="labelArquivo">Selecionar arquivo</span>
+        </label>
+        <input
+          type="file"
+          id="arquivoInput"
+          accept=".txt,.pdf"
+          onchange="selecionarArquivo(event)"
+        />
 
-    <label class="upload-label" for="arquivoInput">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <path d="M9 12V4M5 8l4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M3 14h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-      </svg>
-      <span id="labelArquivo">Selecionar arquivo</span>
-    </label>
-    <input type="file" id="arquivoInput" accept=".txt,.pdf" onchange="selecionarArquivo(event)"/>
+        <button id="btnAnalisar" onclick="analisar()">Analisar Email</button>
+      </div>
 
-    <button id="btnAnalisar" onclick="analisar()">Analisar Email</button>
-  </div>
-
-  <div class="como-funciona">
-    <h2>Como funciona</h2>
-    <div class="passos">
-      <div class="passo">
-        <div class="passo-num">1</div>
-        <div>
-          <strong>Recepção</strong>
-          <p>Cole o texto do email ou envie um arquivo .txt ou .pdf.</p>
+      <div class="como-funciona">
+        <h2>Como funciona</h2>
+        <div class="passos">
+          <div class="passo">
+            <div class="passo-num">1</div>
+            <div>
+              <strong>Recepção</strong>
+              <p>Cole o texto do email ou envie um arquivo .txt ou .pdf.</p>
+            </div>
+          </div>
+          <div class="passo">
+            <div class="passo-num">2</div>
+            <div>
+              <strong>Pré-processamento</strong>
+              <p>
+                O texto é limpo e analisado com técnicas de NLP (remoção de stop
+                words e stemming).
+              </p>
+            </div>
+          </div>
+          <div class="passo">
+            <div class="passo-num">3</div>
+            <div>
+              <strong>Classificação com IA</strong>
+              <p>
+                O Gemini AI lê o email e decide se é Produtivo ou Improdutivo.
+              </p>
+            </div>
+          </div>
+          <div class="passo">
+            <div class="passo-num">4</div>
+            <div>
+              <strong>Resposta automática</strong>
+              <p>
+                Uma resposta profissional é gerada e fica pronta para ser
+                copiada e enviada.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="passo">
-        <div class="passo-num">2</div>
-        <div>
-          <strong>Pré-processamento</strong>
-          <p>O texto é limpo e analisado com técnicas de NLP (remoção de stop words e stemming).</p>
+
+      <div class="historico" id="historicoSection" hidden>
+        <h2>Histórico de análises</h2>
+        <ul id="historicoLista"></ul>
+      </div>
+
+      <div class="card" id="resultadoCard" hidden>
+        <div id="badgeCategoria" class="badge"></div>
+
+        <div class="campo">
+          <span class="campo-label">Justificativa</span>
+          <p id="motivo"></p>
         </div>
-      </div>
-      <div class="passo">
-        <div class="passo-num">3</div>
-        <div>
-          <strong>Classificação com IA</strong>
-          <p>O Gemini AI lê o email e decide se é Produtivo ou Improdutivo.</p>
+
+        <div class="campo">
+          <span class="campo-label">Resposta Sugerida</span>
+          <div class="resposta-box">
+            <pre id="resposta"></pre>
+            <button class="btn-copiar" onclick="copiar()">Copiar</button>
+          </div>
         </div>
-      </div>
-      <div class="passo">
-        <div class="passo-num">4</div>
-        <div>
-          <strong>Resposta automática</strong>
-          <p>Uma resposta profissional é gerada e fica pronta para ser copiada e enviada.</p>
+
+        <div class="campo motor-campo">
+          <span id="motor" class="motor-tag"></span>
         </div>
+
+        <button class="btn-novo" onclick="novo()">← Analisar novo email</button>
       </div>
-    </div>
-  </div>
+    </main>
 
-  <div class="historico" id="historicoSection" hidden>
-    <h2>Histórico de análises</h2>
-    <ul id="historicoLista"></ul>
-  </div>
+    <div id="toast" class="toast"></div>
 
-  <div class="card" id="resultadoCard" hidden>
-    <div id="badgeCategoria" class="badge"></div>
-
-    <div class="campo">
-      <span class="campo-label">Justificativa</span>
-      <p id="motivo"></p>
-    </div>
-
-    <div class="campo">
-      <span class="campo-label">Resposta Sugerida</span>
-      <div class="resposta-box">
-        <pre id="resposta"></pre>
-        <button class="btn-copiar" onclick="copiar()">Copiar</button>
-      </div>
-    </div>
-
-    <div class="campo motor-campo">
-      <span id="motor" class="motor-tag"></span>
-    </div>
-
-    <button class="btn-novo" onclick="novo()">← Analisar novo email</button>
-  </div>
-</main>
-
-<div id="toast" class="toast"></div>
-
-<script src="app.js"></script>
-</body>
+    <script src="app.js"></script>
+  </body>
 </html>
