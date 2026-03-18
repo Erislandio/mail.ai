@@ -9,15 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN python -c "\
-import nltk; \
-nltk.download('stopwords', quiet=True); \
-nltk.download('punkt', quiet=True); \
-nltk.download('punkt_tab', quiet=True); \
-nltk.download('wordnet', quiet=True); \
-nltk.download('omw-1.4', quiet=True); \
-nltk.download('rslp', quiet=True)"
-
 COPY . .
 
 ENV FLASK_DEBUG=False

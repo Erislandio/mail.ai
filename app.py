@@ -4,27 +4,18 @@ import json
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem import RSLPStemmer
 import PyPDF2
 from io import BytesIO
 import google.generativeai as genai
 
 load_dotenv()
 
-nltk.download("stopwords", quiet=True)
-nltk.download("punkt", quiet=True)
-nltk.download("punkt_tab", quiet=True)
-nltk.download("rslp", quiet=True)
-
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL_ID = "gemini-1.5-flash"
-MOTOR_REGRAS_ID = "Análise por Palavras-chave (NLTK)"
+MOTOR_REGRAS_ID = "Análise por Palavras-chave"
 gemini_model = None
 
 if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
@@ -35,15 +26,11 @@ if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
 def preprocessar(texto):
     texto = texto.lower()
     texto = re.sub(r"[^a-záéíóúàâêôãõüç\s]", " ", texto)
-    tokens = word_tokenize(texto, language="portuguese")
-    stops = set(stopwords.words("portuguese")) | set(stopwords.words("english"))
-    tokens = [t for t in tokens if t not in stops and len(t) > 2]
-    stemmer = RSLPStemmer()
-    stems = [stemmer.stem(t) for t in tokens]
-    return tokens, stems
+    tokens = [t for t in texto.split() if len(t) > 2]
+    return tokens
 
 
-def classificar_por_regras(tokens, stems):
+def classificar_por_regras(tokens):
     palavras_produtivas = {
         "suporte", "problema", "erro", "ajuda", "solicitação", "pedido",
         "atualização", "urgente", "pagamento", "fatura", "boleto", "dúvida",
@@ -53,7 +40,7 @@ def classificar_por_regras(tokens, stems):
         "feliz", "natal", "parabéns", "obrigado", "obrigada", "festa",
         "felicidades", "gratidão", "agradecimento", "abraço",
     }
-    todos = set(tokens + stems)
+    todos = set(tokens)
     prod = len(todos & palavras_produtivas)
     improd = len(todos & palavras_improdutivas)
     return "Produtivo" if prod >= improd else "Improdutivo"
@@ -121,7 +108,7 @@ def classificar():
     if len(texto) < 10:
         return jsonify({"erro": "Texto muito curto para análise."}), 400
 
-    tokens, stems = preprocessar(texto)
+    tokens = preprocessar(texto)
 
     if gemini_model:
         try:
@@ -135,7 +122,7 @@ def classificar():
         except Exception as e:
             print("Erro Gemini:", e)
 
-    categoria = classificar_por_regras(tokens, stems)
+    categoria = classificar_por_regras(tokens)
 
     palavras_produtivas = {
         "suporte", "problema", "erro", "ajuda", "solicitação", "pedido",
