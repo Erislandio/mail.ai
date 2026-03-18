@@ -23,11 +23,13 @@ app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL_ID = "gemini-1.5-flash"
+MOTOR_REGRAS_ID = "Análise por Palavras-chave (NLTK)"
 gemini_model = None
 
 if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
     genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+    gemini_model = genai.GenerativeModel(GEMINI_MODEL_ID)
 
 
 def preprocessar(texto):
@@ -61,23 +63,29 @@ def analisar_com_gemini(texto):
     prompt = f"""
 Você é um assistente especializado em análise de emails corporativos de uma empresa financeira.
 
-Analise o email abaixo e responda SOMENTE em JSON válido com a seguinte estrutura:
+Analise o email abaixo e execute as duas tarefas a seguir:
+
+## Tarefa 1 — Classificação
+Determine a categoria do email:
+- "Produtivo": o email requer ação da equipe (ex: suporte técnico, dúvidas sobre produtos ou serviços, reclamações, pagamentos, pendências, cancelamento ou atualização de cadastro).
+- "Improdutivo": o email não requer ação operacional (ex: felicitações, agradecimentos, mensagens de cortesia ou promoções sem solicitação explícita).
+
+No campo "motivo", explique em 2 a 4 frases o motivo da classificação. Mencione: o assunto principal do email, a intenção do remetente, e se há ou não uma demanda que exige ação da equipe.
+
+## Tarefa 2 — Geração de Resposta
+Gere uma resposta automática profissional em português, adequada à categoria identificada e ao contexto específico do email analisado. A resposta deve conter: saudação personalizada, corpo com encaminhamento adequado (próximo passo, prazo ou agradecimento) e assinatura da equipe.
+
+Retorne SOMENTE o seguinte JSON válido, sem nenhum texto extra antes ou depois:
 {{
   "categoria": "Produtivo" ou "Improdutivo",
-  "motivo": "Justificativa detalhada em 2 a 4 frases. Mencione especificamente o que no email levou à classificação: cite o assunto principal, a intenção do remetente, e por que isso requer (ou não) uma ação da equipe.",
-  "resposta": "Resposta automática profissional em português, adequada ao contexto específico do email analisado, com saudação, corpo e assinatura."
+  "motivo": "Justificativa detalhada conforme Tarefa 1",
+  "resposta": "Resposta profissional gerada conforme Tarefa 2"
 }}
-
-Critérios de classificação:
-- Produtivo: requer ação da equipe (ex: suporte técnico, dúvidas sobre produtos/serviços, reclamações, pagamentos, pendências, solicitações de cancelamento ou atualização).
-- Improdutivo: não requer ação operacional (ex: felicitações, agradecimentos, emails promocionais sem solicitação, mensagens de cortesia).
 
 Email:
 ---
 {texto[:3000]}
 ---
-
-Retorne apenas o JSON, sem texto extra.
 """
     resposta = gemini_model.generate_content(prompt)
     raw = resposta.text.strip()
@@ -122,7 +130,7 @@ def classificar():
                 "categoria": resultado.get("categoria", "—"),
                 "motivo": resultado.get("motivo", "—"),
                 "resposta": resultado.get("resposta", "—"),
-                "motor": "Gemini AI",
+                "motor": f"Gemini AI ({GEMINI_MODEL_ID})",
             })
         except Exception as e:
             print("Erro Gemini:", e)
@@ -172,7 +180,7 @@ def classificar():
         "categoria": categoria,
         "motivo": motivo_auto,
         "resposta": resposta_auto,
-        "motor": "Regras",
+        "motor": MOTOR_REGRAS_ID,
     })
 
 
@@ -182,5 +190,5 @@ def status():
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5002))
+    port = int(os.getenv("PORT", 5003))
     app.run(host="0.0.0.0", port=port, debug=True)
