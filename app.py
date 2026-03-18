@@ -59,24 +59,25 @@ def classificar_por_regras(tokens, stems):
 
 def analisar_com_gemini(texto):
     prompt = f"""
-Você é um assistente de análise de emails de uma empresa financeira.
+Você é um assistente especializado em análise de emails corporativos de uma empresa financeira.
 
-Analise o email abaixo e responda SOMENTE em JSON válido:
+Analise o email abaixo e responda SOMENTE em JSON válido com a seguinte estrutura:
 {{
   "categoria": "Produtivo" ou "Improdutivo",
-  "motivo": "uma frase explicando",
-  "resposta": "resposta automática profissional em português"
+  "motivo": "Justificativa detalhada em 2 a 4 frases. Mencione especificamente o que no email levou à classificação: cite o assunto principal, a intenção do remetente, e por que isso requer (ou não) uma ação da equipe.",
+  "resposta": "Resposta automática profissional em português, adequada ao contexto específico do email analisado, com saudação, corpo e assinatura."
 }}
 
-- Produtivo: requer ação (suporte, dúvidas, pagamentos, pendências)
-- Improdutivo: não requer ação (felicitações, agradecimentos)
+Critérios de classificação:
+- Produtivo: requer ação da equipe (ex: suporte técnico, dúvidas sobre produtos/serviços, reclamações, pagamentos, pendências, solicitações de cancelamento ou atualização).
+- Improdutivo: não requer ação operacional (ex: felicitações, agradecimentos, emails promocionais sem solicitação, mensagens de cortesia).
 
 Email:
 ---
 {texto[:3000]}
 ---
 
-Retorne apenas o JSON.
+Retorne apenas o JSON, sem texto extra.
 """
     resposta = gemini_model.generate_content(prompt)
     raw = resposta.text.strip()
@@ -127,20 +128,49 @@ def classificar():
             print("Erro Gemini:", e)
 
     categoria = classificar_por_regras(tokens, stems)
+
+    palavras_produtivas = {
+        "suporte", "problema", "erro", "ajuda", "solicitação", "pedido",
+        "atualização", "urgente", "pagamento", "fatura", "boleto", "dúvida",
+        "sistema", "acesso", "bug", "falha", "reclamação", "cancelamento",
+    }
+    palavras_improdutivas = {
+        "feliz", "natal", "parabéns", "obrigado", "obrigada", "festa",
+        "felicidades", "gratidão", "agradecimento", "abraço",
+    }
+    todos = set(tokens)
+    gatilhos = todos & (palavras_produtivas if categoria == "Produtivo" else palavras_improdutivas)
+    gatilhos_str = ", ".join(f'"{g}"' for g in sorted(gatilhos)) if gatilhos else "contexto geral"
+
     if categoria == "Produtivo":
+        motivo_auto = (
+            f"O email foi classificado como Produtivo pela detecção das palavras-chave: {gatilhos_str}. "
+            "Isso indica que o remetente possui uma demanda operacional que requer atenção da equipe. "
+            "A mensagem foi encaminhada para análise e resposta dentro do prazo estabelecido."
+        )
         resposta_auto = (
-            "Prezado(a),\n\nAgradecemos o contato. Sua solicitação foi recebida e será "
-            "analisada pela equipe responsável em até 2 dias úteis.\n\nAtenciosamente,\nEquipe de Atendimento"
+            "Prezado(a),\n\nAgradecemos o seu contato. Recebemos a sua mensagem e ela já foi "
+            "registrada em nosso sistema. Nossa equipe responsável irá analisá-la e retornará "
+            "em até 2 dias úteis com uma resposta ou solução.\n\n"
+            "Caso sua solicitação seja urgente, por favor ligue para nosso canal de atendimento.\n\n"
+            "Atenciosamente,\nEquipe de Atendimento"
         )
     else:
+        motivo_auto = (
+            f"O email foi classificado como Improdutivo pela detecção das palavras-chave: {gatilhos_str}. "
+            "A mensagem tem caráter de cortesia ou agradecimento e não requer nenhuma ação operacional "
+            "por parte da equipe. Uma resposta de agradecimento foi gerada automaticamente."
+        )
         resposta_auto = (
-            "Prezado(a),\n\nMuito obrigado pela mensagem! "
-            "É sempre um prazer receber palavras tão gentis.\n\nAtenciosamente,\nEquipe de Atendimento"
+            "Prezado(a),\n\nMuito obrigado pela sua mensagem! "
+            "É sempre um prazer recebermos palavras tão gentis e motivadoras. "
+            "Sua consideração é muito bem-vinda e nos inspira a continuar oferecendo o melhor serviço.\n\n"
+            "Atenciosamente,\nEquipe de Atendimento"
         )
 
     return jsonify({
         "categoria": categoria,
-        "motivo": "Classificado por palavras-chave (sem IA).",
+        "motivo": motivo_auto,
         "resposta": resposta_auto,
         "motor": "Regras",
     })
